@@ -1,0 +1,59 @@
+# Membangun dan menguji Berkas Rapi di Windows, macOS, dan Android.
+# CATATAN: versi major action di bawah (checkout@v4, setup-node@v4, setup-java@v4, upload-artifact@v4,
+# setup-android@v3) belum diverifikasi sebagai yang terbaru; periksa halaman releases masing-masing sebelum dipakai rutin.
+name: build
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+        env: { ELECTRON_SKIP_BINARY_DOWNLOAD: '1' }
+      - run: npm run typecheck
+      - run: npm run build
+      - run: npx vitest run tests/core.test.ts tests/fs-service.test.ts
+
+  desktop:
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-latest, script: dist:win, artifact: berkas-rapi-windows, path: 'release/*.exe' }
+          - { os: macos-latest, script: dist:mac, artifact: berkas-rapi-macos, path: 'release/*.dmg' }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run ${{ matrix.script }}
+        env:
+          # Tanpa sertifikat: installer tidak bertanda tangan (lihat docs/BUILD.md soal SmartScreen/Gatekeeper).
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - uses: actions/upload-artifact@v4
+        with: { name: '${{ matrix.artifact }}', path: '${{ matrix.path }}', if-no-files-found: error }
+
+  android:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 21 }
+      - uses: android-actions/setup-android@v3
+      - run: npm ci
+        env: { ELECTRON_SKIP_BINARY_DOWNLOAD: '1' }
+      - run: npm run android:apk
+      - uses: actions/upload-artifact@v4
+        with: { name: berkas-rapi-android-debug, path: android/app/build/outputs/apk/debug/app-debug.apk, if-no-files-found: error }

@@ -1,0 +1,12 @@
+{
+  "appId": "id.berkasrapi.app",
+  "appName": "Berkas Rapi",
+  "webDir": "dist",
+  "android": {
+    "allowMixedContent": false,
+    "backgroundColor": "#f5f6f8"
+  },
+  "server": {
+    "androidScheme": "https"
+  }
+}
