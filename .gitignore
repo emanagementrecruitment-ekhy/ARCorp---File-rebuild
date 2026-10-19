@@ -15,3 +15,4 @@ android/app/src/main/assets/capacitor.plugins.json
 *.keystore
 *.apk
 *.aab
+.clawness/guard_sessions.json
